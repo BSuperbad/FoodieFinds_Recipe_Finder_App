@@ -1,11 +1,26 @@
 {% extends 'index.html' %}
 
 {% block content %}
-<h1>Recipe Names</h1>
-
+<h2>Recipes</h2>
 <ul>
+
     {% for recipe in recipe_list %}
-    <li><a href="/recipes/{{ loop.index -1 }}">{{ recipe.name }}</a></li>
+    <li><a href="/recipes/{{ recipe.id }}">{{ recipe.name }}</a>
+        {% set favorite_recipe_ids = g.user.fav_recipes|map(attribute='recipe_id')|list %}
+        {% if recipe.id|int in favorite_recipe_ids %}
+        <form method="POST" style="display: inline-block" class="btn-link" action="/fav-recipes/{{recipe.id}}/delete">
+            <button class="btn btn-link" type="submit">
+                <i class="fas fa-heart text-secondary"></i>
+            </button>
+        </form>
+        {% else %}
+        <form method="POST" style="display: inline-block" class="btn-link" action="/fav-recipes/{{recipe.id}}">
+            <button class="btn btn-link" type="submit">
+                <i class="fas fa-heart text-info"></i>
+            </button>
+        </form>
+        {% endif %}
+    </li>
     {% endfor %}
 </ul>
 {% endblock %}

@@ -30,44 +30,15 @@ class User(db.Model):
     fav_recipes = db.relationship(
         'FavoriteRecipe', cascade="all, delete-orphan")
     allergies = db.relationship(
-        "UserAllergy", backref="users", viewonly=True, cascade="all, delete-orphan")
+        "Allergy", backref="users", viewonly=True, cascade="all, delete, delete-orphan")
     diet_prefs = db.relationship(
-        "UserDiet", backref="users", viewonly=True, cascade="all, delete-orphan")
+        "DietaryPreference", backref="users", viewonly=True, cascade="all, delete, delete-orphan")
+
+    #  secondary="user_allergies"
+    #  secondary="user_diet_prefs",
 
     def __repr__(self):
         return f"<User #{self.id}: {self.username}, {self.email}>"
-
-    def get_allergies(self):
-        """Retrieve the allergies for this user."""
-        allergies = [ua.allergy.type for ua in self.user_allergies]
-        return allergies
-
-    def has_allergy(self, allergy_id):
-        """
-        Check if the user has a specific allergy.
-        :param allergy_id: The ID of the allergy to check.
-        :return: True if the user has the allergy, False otherwise.
-        """
-        for user_allergy in self.allergies:
-            if user_allergy.allergy_id == allergy_id:
-                return True
-        return False
-
-    def get_diet(self):
-        """Retrieve the dietary preferences for this user."""
-        diets = [ud.diet_pref.type for ud in self.user_diet_prefs]
-        return diets
-
-    def has_diet(self, diet_id):
-        """
-        Check if the user has a specific allergy.
-        :param allergy_id: The ID of the allergy to check.
-        :return: True if the user has the allergy, False otherwise.
-        """
-        for user_diet_pref in self.diet_prefs:
-            if user_diet_pref.diet_prefs_id == diet_id:
-                return True
-        return False
 
     @classmethod
     def signup(cls, username, email, password):
@@ -135,7 +106,7 @@ class UserAllergy(db.Model):
     __tablename__ = "user_allergies"
 
     user_id = db.Column(db.Integer, db.ForeignKey(
-        "users.id", ondelete='CASCADE'), primary_key=True)
+        "users.id"), primary_key=True)
     allergy_id = db.Column(db.Integer, db.ForeignKey(
         "allergies.id"), primary_key=True)
 
@@ -149,7 +120,7 @@ class UserDiet(db.Model):
     __tablename__ = "user_diet_prefs"
 
     user_id = db.Column(db.Integer, db.ForeignKey(
-        "users.id", ondelete='CASCADE'), primary_key=True)
+        "users.id"), primary_key=True)
     diet_prefs_id = db.Column(db.Integer, db.ForeignKey(
         "diet_prefs.id"), primary_key=True)
 

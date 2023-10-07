@@ -1,0 +1,30 @@
+{% extends 'index.html' %}
+
+{% block content %}
+<div class="row justify-content-md-center">
+    <div class="col-md-7 col-lg-5">
+        <h2 class="join-message">Profile for {{user.username}}</h2>
+        <form method="POST" id="user_form">
+
+            <p>Username: {{user.username}}</p>
+            <p>Email: {{user.email}}</p>
+            <p>Allergies:
+                {% for user_allergy in user.user_allergies %}
+                <span class="badge badge-danger">{{ user_allergy.allergy.type }}</span>
+                {% endfor %}
+            </p>
+            <p>Dietary Preferences:
+                {% for user_diet_pref in user.user_diet_prefs %}
+                <span class="badge badge-info">{{ user_diet_pref.diet_pref.type }}</span>
+                {% endfor %}
+            </p>
+
+            <button class="btn btn-outline-primary btn-lg btn-block">Edit Profile</button>
+        </form>
+        <form method="POST" action="/profile/delete" class="form-inline">
+            <button class="btn btn-outline-danger btn-lg btn-block">Delete Profile</button>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
