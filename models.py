@@ -29,17 +29,21 @@ class User(db.Model):
 
     fav_recipes = db.relationship(
         'FavoriteRecipe', cascade="all, delete-orphan")
+    user_recipes = db.relationship(
+        'UserRecipe', backref="user", cascade='all, delete-orphan')
     allergies = db.relationship(
-        "UserAllergy", backref="users", viewonly=True, cascade="all, delete-orphan")
+        "UserAllergy", back_populates="user",
+        overlaps="users", cascade="all, delete-orphan")
     diet_prefs = db.relationship(
-        "UserDiet", backref="users", viewonly=True, cascade="all, delete-orphan")
+        "UserDiet", back_populates="user",
+        overlaps="users", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User #{self.id}: {self.username}, {self.email}>"
 
     def get_allergies(self):
         """Retrieve the allergies for this user."""
-        allergies = [ua.allergy.type for ua in self.user_allergies]
+        allergies = [ua.allergy.type for ua in self.allergies]
         return allergies
 
     def has_allergy(self, allergy_id):
@@ -55,7 +59,7 @@ class User(db.Model):
 
     def get_diet(self):
         """Retrieve the dietary preferences for this user."""
-        diets = [ud.diet_pref.type for ud in self.user_diet_prefs]
+        diets = [ud.diet_pref.type for ud in self.diet_prefs]
         return diets
 
     def has_diet(self, diet_id):
@@ -109,14 +113,14 @@ class DietaryPreference(db.Model):
     __tablename__ = "diet_prefs"
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    type = db.Column(db.String)
+    type = db.Column(db.Text)
 
 
 class Allergy(db.Model):
     """Allergy Model"""
     __tablename__ = "allergies"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    type = db.Column(db.String)
+    type = db.Column(db.Text)
 
 
 class FavoriteRecipe(db.Model):
@@ -135,11 +139,12 @@ class UserAllergy(db.Model):
     __tablename__ = "user_allergies"
 
     user_id = db.Column(db.Integer, db.ForeignKey(
-        "users.id", ondelete='CASCADE'), primary_key=True)
+        "users.id"), primary_key=True)
     allergy_id = db.Column(db.Integer, db.ForeignKey(
         "allergies.id"), primary_key=True)
 
-    user = db.relationship("User", backref="user_allergies")
+    user = db.relationship("User", back_populates="allergies",
+                           overlaps="user_allergies")
     allergy = db.relationship("Allergy", backref="user_allergies")
 
 
@@ -149,9 +154,26 @@ class UserDiet(db.Model):
     __tablename__ = "user_diet_prefs"
 
     user_id = db.Column(db.Integer, db.ForeignKey(
-        "users.id", ondelete='CASCADE'), primary_key=True)
+        "users.id"), primary_key=True)
     diet_prefs_id = db.Column(db.Integer, db.ForeignKey(
         "diet_prefs.id"), primary_key=True)
 
-    user = db.relationship("User", backref="user_diet_prefs")
-    diet_pref = db.relationship("DietaryPreference", backref="user_diet_prefs")
+    user = db.relationship("User", back_populates="diet_prefs",  # Back-reference to User.diet_prefs
+                           overlaps="user_diet_prefs")
+    diet_pref = db.relationship(
+        "DietaryPreference", backref="user_diet_prefs")
+
+
+class UserRecipe(db.Model):
+    """User-added Recipe Table"""
+
+    __tablename__ = "user_recipes"
+
+    id = db.Column(db.Integer,
+                   primary_key=True,
+                   autoincrement=True)
+    title = db.Column(db.Text, nullable=False)
+    photo_url = db.Column(db.Text, nullable=True)
+    ingredients = db.Column(db.Text, nullable=False)
+    instructions = db.Column(db.Text, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"))

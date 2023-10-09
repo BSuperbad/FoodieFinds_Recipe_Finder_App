@@ -6,13 +6,14 @@
 import requests
 from flask import Flask, request, render_template, redirect, flash, session, g, jsonify
 from flask_debugtoolbar import DebugToolbarExtension
-from models import db, connect_db, User, FavoriteRecipe, Allergy, DietaryPreference, UserAllergy, UserDiet
-from forms import AddUserForm, LoginForm, EditForm, IngredientSearchForm
+from models import db, connect_db, User, FavoriteRecipe, Allergy, DietaryPreference, UserAllergy, UserDiet, UserRecipe
+from forms import AddUserForm, LoginForm, EditForm, IngredientSearchForm, AddRecipeForm
 from sqlalchemy.exc import IntegrityError
 from bs4 import BeautifulSoup
+from secret import API_KEY
 
 API_BASE_URL = "https://api.spoonacular.com/recipes"
-API_KEY = "575e1a620c0049c982972c3f3dba302b"
+API_KEY = API_KEY
 CURR_USER_KEY = "curr_user"
 html_instructions = '<ol><li>'
 diets = ['Gluten Free', 'Ketogenic', 'Vegetarian', 'Lacto-Vegetarian',
@@ -88,7 +89,7 @@ def fetch_and_populate():
             params={
                 'intolerances': ','.join(user_allergies),
                 'diet': user_diet,
-                'number': 2,
+                'number': 10,
                 'apiKey': API_KEY,
                 'sort': 'random'
             })
@@ -181,7 +182,7 @@ def view_user_profile(user_id):
     return render_template('users/detail.html', user=user, allergies=allergies, diet_prefs=diet_prefs)
 
 
-@app.route('/profile/<int:user_id>', methods=["POST"])
+@app.route('/profile/<int:user_id>/edit', methods=["GET", "POST"])
 def edit_user_profile(user_id):
     user = User.query.get_or_404(user_id)
     allergies = Allergy.query.all()
@@ -190,26 +191,43 @@ def edit_user_profile(user_id):
     form = EditForm(request.form, obj=user)
 
     if not g.user:
-        flash("Unable to view other users profiles", "danger")
+        flash("Unable to view other users' profiles", "danger")
         return redirect("/")
 
     if request.method == 'POST' and form.validate_on_submit():
         user.username = form.username.data
         user.email = form.email.data
 
+        allergy_id = int(request.form.get('allergies')) if request.form.get(
+            'allergies') != 'None' else None
+        diet_prefs_id = int(request.form.get('diet_prefs')) if request.form.get(
+            'diet_prefs') != 'None' else None
+
+        if user.has_allergy(allergy_id):
+            flash("Allergy already noted.", "warning")
+            return redirect(f'/profile/{g.user.id}/edit')
+        elif user.has_diet(diet_prefs_id):
+            flash("Dietary Preference already noted.", "warning")
+            return redirect(f'/profile/{g.user.id}/edit')
+        else:
+            user.allergies_id = allergy_id
+            user.diet_prefs_id = diet_prefs_id
+
         new_allergies = request.form.getlist('allergies')
-        for allergy_id in new_allergies:
-            if not user.has_allergy(allergy_id):
-                user_allergy = UserAllergy(
-                    user_id=user.id, allergy_id=int(allergy_id))  # Convert to int
-                db.session.add(user_allergy)
+        if 'None' not in new_allergies:
+            for allergy_id in new_allergies:
+                if not user.has_allergy(int(allergy_id)):
+                    user_allergy = UserAllergy(
+                        user_id=user.id, allergy_id=int(allergy_id))
+                    db.session.add(user_allergy)
 
         new_diet_prefs = request.form.getlist('diet_prefs')
-        for diet_prefs_id in new_diet_prefs:
-            if not user.has_diet(diet_prefs_id):
-                user_diet_pref = UserDiet(
-                    user_id=user.id, diet_prefs_id=int(diet_prefs_id))
-                db.session.add(user_diet_pref)
+        if 'None' not in new_diet_prefs:
+            for diet_prefs_id in new_diet_prefs:
+                if not user.has_diet(int(diet_prefs_id)):
+                    user_diet_pref = UserDiet(
+                        user_id=user.id, diet_prefs_id=int(diet_prefs_id))
+                    db.session.add(user_diet_pref)
 
         db.session.commit()
         flash("Profile updated successfully!", "success")
@@ -330,16 +348,18 @@ def search_ingredient():
         ingredients = request.form.get('ingredients')
         user_allergies = g.user.get_allergies()
         user_diet = g.user.get_diet()
+
         if not user_allergies:
             user_allergies = []
         if not user_diet:
             user_diet = []
+
         response = requests.get(
             f'{API_BASE_URL}/complexSearch',
             params={
                 'intolerances': ','.join(user_allergies),
-                'diet': user_diet,
-                'number': 2,
+                'diet': ','.join(user_diet),
+                'number': 10,
                 'apiKey': API_KEY,
                 'query': ingredients,
                 'sort': 'random'
@@ -349,7 +369,11 @@ def search_ingredient():
             recipe_data = data["results"]
             recipes = [{"name": recipe["title"], "id": recipe.get(
                 "id", "")} for recipe in recipe_data]
-            return render_template('recipes/search.html', recipes=recipes, form=form)
+            if not recipes:  # Check if recipes list is empty
+                flash(
+                    "No recipes found based on your allergies/ dietary preferences.", "warning")
+            else:
+                return render_template('recipes/search.html', recipes=recipes, form=form)
     return render_template('recipes/search.html', form=form)
 
 
@@ -366,3 +390,111 @@ def unfavorite_recipe(recipe_id):
     db.session.commit()
     flash("Recipe removed from favorites!", "success")
     return redirect("/fav-recipes")
+
+##################################################################################
+# Removing Tags Routes
+
+
+@app.route('/remove-allergy/<int:user_allergy_id>', methods=['POST'])
+def remove_allergy(user_allergy_id):
+    """Remove an allergy for g.user"""
+    if not g.user:
+        flash("You must be logged in.", "danger")
+        return redirect("/login")
+
+    user_allergy = UserAllergy.query.get_or_404((g.user.id, user_allergy_id))
+
+    db.session.delete(user_allergy)
+    db.session.commit()
+    flash(f"Allergy removed from {g.user.username} profile.", "success")
+    return redirect(f"/profile/{g.user.id}")
+
+
+@app.route('/remove-diet/<int:user_diet_pref_id>', methods=['POST'])
+def remove_diet(user_diet_pref_id):
+    """Remove a dietary preference for g.user"""
+    if not g.user:
+        flash("You must be logged in.", "danger")
+        return redirect("/login")
+
+    user_diet = UserDiet.query.get_or_404((g.user.id, user_diet_pref_id))
+
+    db.session.delete(user_diet)
+    db.session.commit()
+    flash(
+        f"Dietary Preference removed from {g.user.username} profile.", "success")
+    return redirect(f"/profile/{g.user.id}")
+
+##################################################################################
+# Stretch goal/ Add own recipe route
+
+
+@app.route('/user-recipes', methods=['GET'])
+def list_added_recipes_of_g_user():
+    """Page of Logged In User's Added Recipes."""
+    if not g.user:
+        flash("Login to add recipes of your own", "danger")
+        return redirect('/login')
+
+    user_recipes = UserRecipe.query.filter_by(user_id=g.user.id).all()
+    return render_template('add-recipes/user-recipes.html', user_recipes=user_recipes)
+
+
+@app.route('/add-recipe', methods=['GET', 'POST'])
+def add_recipe():
+    """Shows the form to add a recipe and adds to the db"""
+
+    """Handle add recipe.
+
+    User creates/ adds own recipes and add to DB. Redirect to user's favorite recipes.
+
+    If form not valid, present form.
+    """
+    if not g.user:
+        flash("You must be logged in.", "danger")
+        return redirect("/login")
+
+    form = AddRecipeForm()
+
+    if form.validate_on_submit():
+        recipe = UserRecipe(
+            title=form.title.data,
+            photo_url=form.photo_url.data,
+            ingredients=form.ingredients.data,
+            instructions=form.instructions.data,
+            user_id=g.user.id
+        )
+        db.session.add(recipe)
+        db.session.commit()
+        flash(f"{recipe.title} recipe added.", "success")
+        return redirect(f'/user-recipes/{recipe.id}')
+
+    return render_template('add-recipes/add.html', form=form)
+
+
+@app.route('/user-recipes/<int:recipe_id>', methods=["GET"])
+def get_user_recipe_info(recipe_id):
+    """Show user-added recipe details."""
+    if not g.user:
+        flash("Login to view and add recipes", "danger")
+        return redirect('/login')
+
+    user_recipe = UserRecipe.query.get_or_404(recipe_id)
+
+    return render_template('add-recipes/show.html', user_recipe=user_recipe)
+
+
+@app.route('/delete/<int:recipe_id>', methods=["POST"])
+def delete_recipe(recipe_id):
+    """Delete user recipe."""
+
+    if not g.user:
+        flash("You must be logged in.", "danger")
+        return redirect("/login")
+
+    recipe = UserRecipe.query.get_or_404(recipe_id)
+    db.session.delete(recipe)
+    db.session.commit()
+    flash(
+        f"{recipe.title} has been deleted.", "success")
+    return redirect(f"/user-recipes")

@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, TextAreaField, SelectField
-from wtforms.validators import DataRequired, Email, Length, Optional
+from wtforms.validators import DataRequired, Email, Length, Optional, URL
 from models import Allergy, DietaryPreference
 
 
@@ -16,19 +16,20 @@ class EditForm(FlaskForm):
     """Edit g.user preferences"""
     username = StringField('Username', validators=[DataRequired()])
     email = StringField('E-mail', validators=[DataRequired(), Email()])
-    allergies = SelectField('Allergies')
-    diet_prefs = SelectField('Dietary Preferences')
+    allergies = SelectField('Allergies', default=None, validators=[Optional()])
+    diet_prefs = SelectField('Dietary Preferences',
+                             default=None, validators=[Optional()])
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # Populate the allergy choices from the database
-        self.allergies.choices = [(allergy.id, allergy.type)
-                                  for allergy in Allergy.query.all()]
+        self.allergies.choices = [(None, 'Add Allergy')] + [(allergy.id, allergy.type)
+                                                            for allergy in Allergy.query.all()]
 
         # Populate the diet preferences choices from the database
-        self.diet_prefs.choices = [(diet.id, diet.type)
-                                   for diet in DietaryPreference.query.all()]
+        self.diet_prefs.choices = [(None, 'Add Dietary Preference')] + [(diet.id, diet.type)
+                                                                        for diet in DietaryPreference.query.all()]
 
 
 class LoginForm(FlaskForm):
@@ -40,3 +41,13 @@ class LoginForm(FlaskForm):
 
 class IngredientSearchForm(FlaskForm):
     ingredients = StringField('Ingredients', validators=[DataRequired()])
+
+
+class AddRecipeForm(FlaskForm):
+    """Form for adding users."""
+
+    title = StringField('Title', validators=[DataRequired()])
+    photo_url = StringField('Recipe Photo', default=None,
+                            validators=[Optional(), URL()])
+    ingredients = TextAreaField('Ingredients', validators=[DataRequired()])
+    instructions = TextAreaField('Instructions', validators=[DataRequired()])
