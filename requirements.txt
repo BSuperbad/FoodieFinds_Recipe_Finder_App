@@ -20,7 +20,7 @@ Flask-SQLAlchemy==3.0.5
 Flask-WTF==1.1.1
 forex-python==1.8
 greenlet==2.0.2
-gunicorn==21.2.0
+gunicorn==21.0.0
 idna==3.4
 ipython==7.34.0
 itsdangerous==2.1.2
