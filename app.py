@@ -2,7 +2,7 @@
 # pip3 install flask-sqlalchemy
 
 """FoodieFinds: Recipe Finder App & Blog"""
-
+import os
 import requests
 from flask import Flask, request, render_template, redirect, flash, session, g, jsonify
 from flask_debugtoolbar import DebugToolbarExtension
@@ -24,7 +24,8 @@ allergies = ['Dairy', 'Egg', 'Gluten', 'Grain', 'Peanut', 'Seafood',
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql:///foodiefinds'
+app.config['SQLALCHEMY_DATABASE_URI'] = (
+    os.environ.get('DATABASE_URL','postgresql:///foodiefinds'))
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ECHO'] = False
 app.app_context().push()
