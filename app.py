@@ -38,14 +38,14 @@ connect_db(app)
 db.create_all()
 
 
-for diet in diets:
-    dietary_preference = DietaryPreference(type=diet)
-    db.session.add(dietary_preference)
+# Seed diets and allergies only if empty
+if not DietaryPreference.query.first():
+    for diet in diets:
+        db.session.add(DietaryPreference(type=diet))
+if not Allergy.query.first():
+    for allergy in allergies:
+        db.session.add(Allergy(type=allergy))
 
-
-for allergy in allergies:
-    allergy_entry = Allergy(type=allergy)
-    db.session.add(allergy_entry)
 db.session.commit()
 
 

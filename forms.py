@@ -1,6 +1,7 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, TextAreaField, SelectField
+from wtforms import StringField, PasswordField, TextAreaField, SelectField, SelectMultipleField
 from wtforms.validators import DataRequired, Email, Length, Optional, URL
+from wtforms.widgets import ListWidget, CheckboxInput
 from models import Allergy, DietaryPreference
 
 
@@ -16,9 +17,20 @@ class EditForm(FlaskForm):
     """Edit g.user preferences"""
     username = StringField('Username', validators=[DataRequired()])
     email = StringField('E-mail', validators=[DataRequired(), Email()])
-    allergies = SelectField('Allergies', default=None, validators=[Optional()])
-    diet_prefs = SelectField('Dietary Preferences',
-                             default=None, validators=[Optional()])
+
+    allergies = SelectMultipleField(
+        'Allergies',
+        coerce=int,  # Cast IDs to integers
+        widget=ListWidget(prefix_label=False),  # Render as a list
+        option_widget=CheckboxInput(),  # Render options as checkboxes
+    )
+    
+    diet_prefs = SelectMultipleField(
+        'Dietary Preferences',
+        coerce=int,  # Cast IDs to integers
+        widget=ListWidget(prefix_label=False),  # Render as a list
+        option_widget=CheckboxInput(),  # Render options as checkboxes
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

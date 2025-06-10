@@ -149,7 +149,7 @@ class UserAllergy(db.Model):
 
 
 class UserDiet(db.Model):
-    """User-Allergy Association Table"""
+    """User-Diet Association Table"""
 
     __tablename__ = "user_diet_prefs"
 
