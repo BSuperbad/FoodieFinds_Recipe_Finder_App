@@ -20,14 +20,12 @@ class EditForm(FlaskForm):
 
     allergies = SelectMultipleField(
         'Allergies',
-        coerce=int,  # Cast IDs to integers
         widget=ListWidget(prefix_label=False),  # Render as a list
         option_widget=CheckboxInput(),  # Render options as checkboxes
     )
     
     diet_prefs = SelectMultipleField(
         'Dietary Preferences',
-        coerce=int,  # Cast IDs to integers
         widget=ListWidget(prefix_label=False),  # Render as a list
         option_widget=CheckboxInput(),  # Render options as checkboxes
     )
